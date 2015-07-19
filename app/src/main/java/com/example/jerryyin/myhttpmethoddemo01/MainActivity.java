@@ -71,7 +71,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
             @Override
             public void run() {
                 try {
-//                    Log.d("--------run()", "1");
+                    Log.d("--------run()", "1");
 
                     HttpClient httpClient = new DefaultHttpClient();
 //                    Log.d("--------run()", "2");
