@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -67,19 +68,22 @@ public class HttpClientPost extends Activity implements View.OnClickListener {
         @Override
         public void run() {
             HttpClient httpClient = new DefaultHttpClient();
-            HttpPost httpPost = new HttpPost("Http://www.baidu.com");
+            HttpPost httpPost = new HttpPost("http://192.168.50.58:8100/mintcode/api");
             try {
                 //设置要发送给服务器的数据
                 List<BasicNameValuePair> params = new ArrayList<BasicNameValuePair>();
-                params.add(new BasicNameValuePair("username", "admin"));
-                params.add(new BasicNameValuePair("password", "123456"));
+                params.add(new BasicNameValuePair("action", "StockMarket"));
+                params.add(new BasicNameValuePair("typeid", " "));
+                params.add(new BasicNameValuePair("version", "1.0"));
+//                params.add(new BasicNameValuePair("password", "123456"));
 
                 UrlEncodedFormEntity urlEncodedFormEntity = new UrlEncodedFormEntity(params, "utf-8");
-                httpPost.setEntity(urlEncodedFormEntity);
+//                httpPost.setEntity(urlEncodedFormEntity);
                 HttpResponse response = httpClient.execute(httpPost);
 
                 if (response.getStatusLine().getStatusCode() == 200){
                     //请求成功
+                    Log.d("--------RESULT CODE = ", "200");
 
                     HttpEntity entity = response.getEntity();
                     String result = EntityUtils.toString(entity, "utf-8");
@@ -87,6 +91,7 @@ public class HttpClientPost extends Activity implements View.OnClickListener {
                     Message message = new Message();
                     message.what = ShowAnswer;
                     message.obj = result.toString();
+                    Log.d("--------message = ", String.valueOf(message));
                     mhandler.sendMessage(message);
 
                 }
@@ -102,6 +107,7 @@ public class HttpClientPost extends Activity implements View.OnClickListener {
             super.handleMessage(msg);
             switch (msg.what){
                 case ShowAnswer:
+                    Log.d("--------result = ", String.valueOf(msg.what));
                     String result = String.valueOf(msg.what);
                     mtvResult.setText(result);
                     break;

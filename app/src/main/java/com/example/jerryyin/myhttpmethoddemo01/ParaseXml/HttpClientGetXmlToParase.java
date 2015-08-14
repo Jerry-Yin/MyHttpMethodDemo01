@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -12,6 +13,9 @@ import android.widget.Switch;
 import android.widget.TextView;
 
 import com.example.jerryyin.myhttpmethoddemo01.R;
+import com.example.jerryyin.myhttpmethoddemo01.model.Basics;
+import com.example.jerryyin.myhttpmethoddemo01.model.Items;
+import com.example.jerryyin.myhttpmethoddemo01.model.Webs;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -19,31 +23,39 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.List;
 
 
 /**
  * Created by JerryYin on 7/12/15.
  *
  */
-public class HttpClientGetXmlToParase extends Activity implements View.OnClickListener {
+public class HttpClientGetXmlToParase extends ActionBarActivity implements View.OnClickListener {
 
     /**Constants*/
     public static final int SHOW_RESPONSE = 0;
+    private static final String TAG = "HttpClientGetXmlToParase.class";
 
     /**Views*/
     private Button mbtnSendRequest;
     private TextView mtvResult;
     private EditText metContext;
+    private TextView mtvTrans, mtvBasic, mtvQuery, mtvWeb;
 
     /**Values*/
     private MyHandler mhandler;
-    private String url = "http://fanyi.youdao.com/openapi.do?keyfrom=MyDictionaryyoudao&key=1718920469&type=data&doctype=xml&version=1.1&q=";
+    private String urlXml = "http://fanyi.youdao.com/openapi.do?keyfrom=MyDictionaryyoudao&key=1718920469&type=data&doctype=xml&version=1.1&q=";
+    private String urlJson = "http://fanyi.youdao.com/openapi.do?keyfrom=MyDictionaryyoudao&key=1718920469&type=data&doctype=json&version=1.1&q=";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,6 +67,10 @@ public class HttpClientGetXmlToParase extends Activity implements View.OnClickLi
     public void setupView() {
         mbtnSendRequest = (Button) findViewById(R.id.btn_sendrequest);
         mtvResult = (TextView) findViewById(R.id.tv_show);
+        mtvTrans = (TextView) findViewById(R.id.tv_trans);
+        mtvBasic = (TextView) findViewById(R.id.tv_basic);
+        mtvQuery = (TextView) findViewById(R.id.tv_query);
+        mtvWeb = (TextView) findViewById(R.id.tv_web);
         metContext = (EditText) findViewById(R.id.et_context);
         mbtnSendRequest.setOnClickListener(this);
         mhandler = new MyHandler();         //注意，千万不能在线程中 new handler，会产生严重的错误；
@@ -80,7 +96,7 @@ public class HttpClientGetXmlToParase extends Activity implements View.OnClickLi
             public void run() {
                 try {
                     HttpClient httpClient = new DefaultHttpClient();
-                    HttpGet httpGet = new HttpGet(url + metContext.getText());
+                    HttpGet httpGet = new HttpGet(urlJson + metContext.getText());
                     HttpResponse response = httpClient.execute(httpGet);
 
                     if (response.getStatusLine().getStatusCode() == 200) {
@@ -110,8 +126,26 @@ public class HttpClientGetXmlToParase extends Activity implements View.OnClickLi
                     String result = msg.obj.toString();
                     System.out.println("result = " + result);
 
-                    String data = PullParaseXML(result);
-                    mtvResult.setText(data);
+//                    String data = PullParaseXML(result);
+//                    mtvResult.setText(data);
+
+                    JsonObjectPraseJson(result);
+                    mtvTrans.setText(mItem.getTranslation());
+                    mtvBasic.setText("音  标：" + mItem.getBasic().getPhonetic() + "\n" +
+                            "美式音标：" + mItem.getBasic().getUs_phonetic() + "\n" +
+                            "英式音标：" + mItem.getBasic().getUk_phonetic() + "\n" +
+                            "基本释义：" + mItem.getBasic().getExplains());
+
+                    mtvQuery.setText(mItem.getQuery());
+                    String webs = null;
+                    for (int i=0; i<mWebsItems.size(); i++){
+                        if (i == 0){
+                            webs = mWebsItems.get(i).getValue() + "\n" + mWebsItems.get(i).getKey() + "\n";     //去除第一个字符“null”；
+                        }else {
+                            webs += mWebsItems.get(i).getValue() + "\n" + mWebsItems.get(i).getKey() + "\n";
+                        }
+                    }
+                    mtvWeb.setText(webs);
 
                     break;
 
@@ -227,6 +261,55 @@ public class HttpClientGetXmlToParase extends Activity implements View.OnClickLi
 
         String result = data_basic + "网络释义 ：" + data_web;
         return result;
+    }
+
+
+    /**
+     * JsonObject方式解析json数据
+     * */
+//    private List<Items> listItems = new ArrayList<Items>();
+    private Items mItem;
+    private Basics mBasic;
+    private Webs mWebs;
+//    private List<String> mBasicExpl = new ArrayList<String>();
+    private List<Webs> mWebsItems = new ArrayList<Webs>();
+
+    public void JsonObjectPraseJson(String jsonData){
+        Log.d(TAG, "jsonData = "+jsonData);
+
+        if (jsonData != null && !jsonData.equals("")){
+            try {
+                JSONObject jb = new JSONObject(jsonData);
+                mItem = new Items();
+                mItem.setTranslation(jb.optString("translation"));
+
+                JSONObject basicObj = new JSONObject(jb.optJSONObject("basic").toString());
+                mBasic = new Basics();
+                mBasic.setUs_phonetic(basicObj.optString("us-phonetic"));
+                mBasic.setPhonetic(basicObj.optString("phonetic"));
+                mBasic.setUk_phonetic(basicObj.optString("uk-phonetic"));
+//                String BCexpl = basicObj.optString("explains");
+
+                mBasic.setExplains(basicObj.optString("explains"));
+                mItem.setBasic(mBasic);
+                mItem.setQuery(jb.optString("query"));
+                mItem.setErrorCode(jb.optInt("errorCode"));
+
+                JSONArray webItems = new JSONArray(jb.optJSONArray("web").toString());
+                for (int i = 0; i < webItems.length(); i++){
+                    JSONObject itemObject = webItems.optJSONObject(i);
+                    mWebs = new Webs();
+                    mWebs.setValue(itemObject.optString("value"));
+                    mWebs.setKey(itemObject.optString("key"));
+                    mWebsItems.add(mWebs);
+                }
+//                mItem.setWeb((Webs) mWebsItems);
+//                listItems.add(mItem);
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
 
